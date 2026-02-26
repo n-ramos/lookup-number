@@ -127,3 +127,6 @@ curl -sS "https://api.ton-domaine.tld/v1/lookup?number=%2B33%206%2012%2034%2056%
   - la commande du service API doit être `node bin/server.ts`
   - retirer tout override `node bin/server.js` ou `cd build && ...`
   - redeployer l'image après mise à jour
+- Erreur FK `lookup_stats_operator_code_foreign`:
+  - déployer la version incluant la migration `1700000002000_lookup_stats_drop_operator_fk`
+  - exécuter `node ace migration:run` dans le service API

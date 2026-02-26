@@ -35,23 +35,41 @@ export default class LookupController {
       safeOperatorCode = operator?.code ?? null
     }
 
-    await params.db.rawQuery(
-      `
-      INSERT INTO lookup_stats
-        (number_digits, request_count, found, operator_code, risk_score, risk_flags, first_seen_at, last_seen_at)
-      VALUES
-        (?, 1, ?, ?, ?, ?::jsonb, NOW(), NOW())
-      ON CONFLICT (number_digits)
-      DO UPDATE SET
-        request_count = lookup_stats.request_count + 1,
-        found = EXCLUDED.found,
-        operator_code = EXCLUDED.operator_code,
-        risk_score = EXCLUDED.risk_score,
-        risk_flags = EXCLUDED.risk_flags,
-        last_seen_at = NOW()
-      `,
-      [params.numberDigits, params.found, safeOperatorCode, params.riskScore, riskFlagsJson]
-    )
+    const runUpsert = async (operatorCode: string | null) => {
+      await params.db.rawQuery(
+        `
+        INSERT INTO lookup_stats
+          (number_digits, request_count, found, operator_code, risk_score, risk_flags, first_seen_at, last_seen_at)
+        VALUES
+          (?, 1, ?, ?, ?, ?::jsonb, NOW(), NOW())
+        ON CONFLICT (number_digits)
+        DO UPDATE SET
+          request_count = lookup_stats.request_count + 1,
+          found = EXCLUDED.found,
+          operator_code = EXCLUDED.operator_code,
+          risk_score = EXCLUDED.risk_score,
+          risk_flags = EXCLUDED.risk_flags,
+          last_seen_at = NOW()
+        `,
+        [params.numberDigits, params.found, operatorCode, params.riskScore, riskFlagsJson]
+      )
+    }
+
+    try {
+      await runUpsert(safeOperatorCode)
+    } catch (error: any) {
+      const code = error?.code ?? error?.cause?.code
+      const constraint = error?.constraint ?? error?.cause?.constraint
+      const isOperatorFkViolation =
+        code === '23503' && String(constraint ?? '').includes('lookup_stats_operator_code_foreign')
+
+      if (!isOperatorFkViolation) {
+        throw error
+      }
+
+      // Race condition safe fallback: store the stat without operator FK reference.
+      await runUpsert(null)
+    }
 
     const current = await params.db
       .from('lookup_stats')
