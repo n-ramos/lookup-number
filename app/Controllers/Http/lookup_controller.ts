@@ -34,7 +34,20 @@ export default class LookupController {
       INSERT INTO lookup_stats
         (number_digits, request_count, found, operator_code, risk_score, risk_flags, first_seen_at, last_seen_at)
       VALUES
-        (?, 1, ?, ?, ?, ?::jsonb, NOW(), NOW())
+        (
+          ?,
+          1,
+          ?,
+          CASE
+            WHEN ? IS NOT NULL AND EXISTS (SELECT 1 FROM operators o WHERE o.code = ?)
+            THEN ?
+            ELSE NULL
+          END,
+          ?,
+          ?::jsonb,
+          NOW(),
+          NOW()
+        )
       ON CONFLICT (number_digits)
       DO UPDATE SET
         request_count = lookup_stats.request_count + 1,
@@ -44,7 +57,15 @@ export default class LookupController {
         risk_flags = EXCLUDED.risk_flags,
         last_seen_at = NOW()
       `,
-      [params.numberDigits, params.found, params.operatorCode, params.riskScore, riskFlagsJson]
+      [
+        params.numberDigits,
+        params.found,
+        params.operatorCode,
+        params.operatorCode,
+        params.operatorCode,
+        params.riskScore,
+        riskFlagsJson,
+      ]
     )
 
     const current = await params.db
