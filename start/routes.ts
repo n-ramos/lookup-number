@@ -10,14 +10,259 @@ const swaggerHtml = `<!doctype html>
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>ARCEP API Docs</title>
     <link rel="stylesheet" href="https://unpkg.com/swagger-ui-dist@5/swagger-ui.css" />
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Sora:wght@500;700&family=Space+Grotesk:wght@400;500;700&display=swap" rel="stylesheet">
+    <style>
+      :root {
+        --bg: #f8fafc;
+        --panel: #ffffff;
+        --panel-2: #f8fafc;
+        --line: #e2e8f0;
+        --text: #0f172a;
+        --muted: #64748b;
+        --accent: #2563eb;
+        --good: #059669;
+        --code-bg: #0f172a;
+      }
+      html, body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--text);
+        font-family: "Space Grotesk", system-ui, sans-serif;
+      }
+      .docs-shell {
+        max-width: 1320px;
+        margin: 0 auto;
+        padding: 20px 16px 28px;
+      }
+      .docs-grid {
+        display: grid;
+        grid-template-columns: 280px 1fr;
+        gap: 14px;
+      }
+      .docs-aside {
+        position: sticky;
+        top: 14px;
+        height: fit-content;
+        padding: 18px 20px;
+        border: 1px solid var(--line);
+        border-radius: 16px;
+        background: var(--panel);
+        backdrop-filter: blur(8px);
+        box-shadow: 0 8px 24px rgba(15, 23, 42, 0.06);
+      }
+      .brand {
+        margin: 0;
+        font-family: "Sora", sans-serif;
+        font-size: 1.2rem;
+        line-height: 1.2;
+      }
+      .aside-sub {
+        margin: 8px 0 14px;
+        color: var(--muted);
+        font-size: 0.95rem;
+      }
+      .quick-links {
+        display: grid;
+        gap: 8px;
+      }
+      .quick-links a {
+        display: block;
+        padding: 10px 12px;
+        border-radius: 10px;
+        border: 1px solid var(--line);
+        background: var(--panel-2);
+        color: var(--accent);
+        text-decoration: none;
+        font-weight: 600;
+      }
+      .quick-links a:hover {
+        border-color: #bfdbfe;
+        background: #eff6ff;
+      }
+      .status {
+        margin-top: 14px;
+        padding: 10px 12px;
+        border-radius: 10px;
+        border: 1px solid rgba(4, 120, 87, 0.28);
+        color: #065f46;
+        background: rgba(16, 185, 129, 0.12);
+        font-size: 0.9rem;
+      }
+      .docs-main {
+        min-width: 0;
+      }
+      .docs-head {
+        margin-bottom: 12px;
+        padding: 16px 18px;
+        border: 1px solid var(--line);
+        border-radius: 16px;
+        background: var(--panel);
+        box-shadow: 0 10px 32px rgba(15, 23, 42, 0.08);
+      }
+      .docs-head h1 {
+        margin: 0;
+        font-family: "Sora", sans-serif;
+        font-size: 1.35rem;
+      }
+      .docs-head p {
+        margin: 8px 0 0;
+        color: var(--muted);
+      }
+      .docs-head strong { color: var(--text); }
+      .swagger-ui {
+        border: 1px solid var(--line);
+        border-radius: 16px;
+        overflow: hidden;
+        background: var(--panel);
+        box-shadow: 0 14px 40px rgba(15, 23, 42, 0.1);
+      }
+      .swagger-ui .topbar { display: none; }
+      .swagger-ui .information-container,
+      .swagger-ui .scheme-container {
+        background: transparent;
+        box-shadow: none;
+        border-bottom: 1px solid var(--line);
+      }
+      .swagger-ui .info .title,
+      .swagger-ui .opblock-tag {
+        color: var(--text);
+        font-family: "Sora", sans-serif;
+      }
+      .swagger-ui .opblock {
+        border-radius: 12px;
+        overflow: hidden;
+        border-color: var(--line);
+      }
+      .swagger-ui .opblock .opblock-summary {
+        border-color: var(--line);
+      }
+      .swagger-ui .opblock.opblock-get {
+        background: #eff6ff;
+      }
+      .swagger-ui .opblock.opblock-post {
+        background: #ecfdf5;
+      }
+      .swagger-ui .btn.execute {
+        background: var(--accent);
+        border-color: var(--accent);
+        color: #ffffff;
+      }
+      .swagger-ui input[type=text],
+      .swagger-ui textarea,
+      .swagger-ui select {
+        background: #ffffff;
+        color: var(--text);
+        border: 1px solid var(--line);
+      }
+      .swagger-ui .responses-wrapper,
+      .swagger-ui .opblock-description-wrapper,
+      .swagger-ui .opblock-section-header {
+        background: rgba(248, 250, 252, 0.86);
+      }
+      .swagger-ui,
+      .swagger-ui .info,
+      .swagger-ui .info p,
+      .swagger-ui .info li,
+      .swagger-ui .info a,
+      .swagger-ui .opblock-summary-description,
+      .swagger-ui .opblock-description-wrapper p,
+      .swagger-ui .opblock-description-wrapper li,
+      .swagger-ui .parameter__name,
+      .swagger-ui .parameter__type,
+      .swagger-ui .parameter__in,
+      .swagger-ui .parameter__deprecated,
+      .swagger-ui .response-col_description,
+      .swagger-ui .response-col_status,
+      .swagger-ui .tab li,
+      .swagger-ui table thead tr th,
+      .swagger-ui table tbody tr td,
+      .swagger-ui section.models h4,
+      .swagger-ui section.models h5,
+      .swagger-ui .model-title,
+      .swagger-ui .model,
+      .swagger-ui .prop-name,
+      .swagger-ui .prop-type,
+      .swagger-ui .prop-format,
+      .swagger-ui .renderedMarkdown,
+      .swagger-ui .renderedMarkdown p,
+      .swagger-ui .renderedMarkdown li,
+      .swagger-ui .markdown p,
+      .swagger-ui .markdown li {
+        color: var(--text) !important;
+      }
+      .swagger-ui .parameter__name.required span,
+      .swagger-ui .opblock-summary-method,
+      .swagger-ui .opblock-summary-path,
+      .swagger-ui .link {
+        color: var(--text) !important;
+      }
+      .swagger-ui .tab li button.tablinks,
+      .swagger-ui .btn,
+      .swagger-ui button,
+      .swagger-ui label {
+        color: var(--text) !important;
+      }
+      .swagger-ui input[type=text]::placeholder,
+      .swagger-ui textarea::placeholder {
+        color: #cbd5e1 !important;
+        opacity: 1;
+      }
+      .swagger-ui .highlight-code,
+      .swagger-ui .microlight,
+      .swagger-ui pre,
+      .swagger-ui code,
+      .swagger-ui .curl-command {
+        color: #e2e8f0 !important;
+        background: var(--code-bg) !important;
+      }
+      .swagger-ui .scheme-container .schemes > label {
+        color: var(--text) !important;
+      }
+      @media (max-width: 980px) {
+        .docs-grid {
+          grid-template-columns: 1fr;
+        }
+        .docs-aside {
+          position: static;
+        }
+      }
+    </style>
   </head>
   <body>
-    <div id="swagger-ui"></div>
+    <div class="docs-shell">
+      <div class="docs-grid">
+        <aside class="docs-aside">
+          <h2 class="brand">ARCEP API Console</h2>
+          <p class="aside-sub">Documentation interactive et test live des endpoints.</p>
+          <nav class="quick-links">
+            <a href="/health" target="_blank" rel="noreferrer">Health</a>
+            <a href="/openapi.yaml" target="_blank" rel="noreferrer">OpenAPI YAML</a>
+            <a href="/fr" target="_blank" rel="noreferrer">UI Lookup FR</a>
+            <a href="/en" target="_blank" rel="noreferrer">UI Lookup EN</a>
+          </nav>
+          <div class="status">API ready. Utilise “Try it out” pour tester les routes.</div>
+        </aside>
+
+        <main class="docs-main">
+          <div class="docs-head">
+            <h1>Documentation API ARCEP Lookup</h1>
+            <p><strong>Base:</strong> <code>/</code> • <strong>Version:</strong> OpenAPI 3 • <strong>Mode:</strong> Interactive</p>
+          </div>
+          <div id="swagger-ui"></div>
+        </main>
+      </div>
+    </div>
     <script src="https://unpkg.com/swagger-ui-dist@5/swagger-ui-bundle.js"></script>
     <script>
       window.ui = SwaggerUIBundle({
         url: '/openapi.yaml',
         dom_id: '#swagger-ui',
+        docExpansion: 'list',
+        defaultModelsExpandDepth: 1,
+        displayRequestDuration: true,
+        persistAuthorization: true,
       })
     </script>
   </body>
