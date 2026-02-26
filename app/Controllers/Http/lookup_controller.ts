@@ -28,26 +28,19 @@ export default class LookupController {
     riskFlags: string[]
   }): Promise<number> {
     const riskFlagsJson = JSON.stringify(params.riskFlags)
+    let safeOperatorCode: string | null = null
+
+    if (params.operatorCode) {
+      const operator = await params.db.from('operators').select('code').where('code', params.operatorCode).first()
+      safeOperatorCode = operator?.code ?? null
+    }
 
     await params.db.rawQuery(
       `
       INSERT INTO lookup_stats
         (number_digits, request_count, found, operator_code, risk_score, risk_flags, first_seen_at, last_seen_at)
       VALUES
-        (
-          ?,
-          1,
-          ?,
-          CASE
-            WHEN ?::text IS NOT NULL AND EXISTS (SELECT 1 FROM operators o WHERE o.code = ?::text)
-            THEN ?::text
-            ELSE NULL
-          END,
-          ?,
-          ?::jsonb,
-          NOW(),
-          NOW()
-        )
+        (?, 1, ?, ?, ?, ?::jsonb, NOW(), NOW())
       ON CONFLICT (number_digits)
       DO UPDATE SET
         request_count = lookup_stats.request_count + 1,
@@ -57,14 +50,7 @@ export default class LookupController {
         risk_flags = EXCLUDED.risk_flags,
         last_seen_at = NOW()
       `,
-      [
-        params.numberDigits,
-        params.found,
-        params.operatorCode,
-        params.operatorCode,
-        params.riskScore,
-        riskFlagsJson,
-      ]
+      [params.numberDigits, params.found, safeOperatorCode, params.riskScore, riskFlagsJson]
     )
 
     const current = await params.db

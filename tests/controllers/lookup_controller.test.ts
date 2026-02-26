@@ -43,10 +43,14 @@ test('lookup falls back from +33 to national and increments request count', asyn
       }
 
       if (table === 'operators') {
-        return {
+        const query = {
           where: () => ({
             first: async () => ({ code: 'SFR0', name: 'SFR Test' }),
           }),
+        }
+        return {
+          ...query,
+          select: () => query,
         }
       }
 
