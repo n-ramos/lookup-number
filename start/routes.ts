@@ -856,38 +856,110 @@ function renderNumberSeoPage(params: {
     <meta property="og:title" content="${title}" />
     <meta property="og:description" content="${description}" />
     <meta property="og:url" content="${params.canonicalUrl}" />
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=Sora:wght@600;700&display=swap" rel="stylesheet">
     <style>
-      body { margin: 0; font-family: system-ui, sans-serif; background: #f8fafc; color: #0f172a; }
-      main { max-width: 860px; margin: 40px auto; padding: 0 16px; }
-      .card { background: #fff; border: 1px solid #e2e8f0; border-radius: 14px; padding: 18px; }
-      h1 { margin: 0 0 6px; font-size: 1.5rem; }
-      .muted { color: #64748b; }
-      .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 14px; }
-      .item { border: 1px solid #e2e8f0; border-radius: 10px; padding: 10px; }
-      .lbl { color: #64748b; font-size: .85rem; }
-      .val { font-weight: 700; margin-top: 3px; }
-      .actions { margin-top: 14px; display: flex; gap: 10px; }
-      a.btn { display: inline-block; text-decoration: none; background: #2563eb; color: #fff; padding: 10px 12px; border-radius: 10px; }
-      @media (max-width: 700px) { .grid { grid-template-columns: 1fr; } }
+      body {
+        margin: 0;
+        min-height: 100vh;
+        font-family: 'Space Grotesk', sans-serif;
+        color: #e2e8f0;
+        background: #020617;
+      }
+      h1, h2, h3 { font-family: 'Sora', sans-serif; }
+      .scene {
+        position: relative;
+        overflow: hidden;
+        min-height: 100vh;
+      }
+      .blob {
+        pointer-events: none;
+        position: absolute;
+        border-radius: 999px;
+        filter: blur(70px);
+      }
+      .b1 { left: -80px; top: 40px; width: 280px; height: 280px; background: rgba(34, 211, 238, 0.22); }
+      .b2 { right: -60px; top: -40px; width: 320px; height: 320px; background: rgba(52, 211, 153, 0.16); }
+      .b3 { left: 30%; bottom: -90px; width: 300px; height: 300px; background: rgba(245, 158, 11, 0.12); }
+      main {
+        position: relative;
+        z-index: 1;
+        max-width: 980px;
+        margin: 0 auto;
+        padding: 34px 16px;
+      }
+      .card {
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        border-radius: 24px;
+        background: rgba(15, 23, 42, 0.62);
+        backdrop-filter: blur(12px);
+        padding: 22px;
+      }
+      .topline { color: #67e8f9; font-size: 12px; letter-spacing: .2em; text-transform: uppercase; }
+      h1 { margin: 10px 0 6px; font-size: clamp(1.5rem, 2.6vw, 2rem); }
+      .muted { color: #94a3b8; }
+      .grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 10px;
+        margin-top: 16px;
+      }
+      .item {
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        border-radius: 12px;
+        background: rgba(255, 255, 255, 0.04);
+        padding: 10px;
+      }
+      .lbl { color: #94a3b8; font-size: .84rem; }
+      .val { margin-top: 4px; color: #fff; font-weight: 700; }
+      .actions {
+        margin-top: 16px;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+      }
+      a.btn {
+        display: inline-block;
+        text-decoration: none;
+        padding: 10px 12px;
+        border-radius: 10px;
+        font-weight: 700;
+      }
+      a.btn-primary { background: #22d3ee; color: #082f49; }
+      a.btn-secondary {
+        color: #e2e8f0;
+        background: rgba(255, 255, 255, 0.08);
+        border: 1px solid rgba(255, 255, 255, 0.2);
+      }
+      @media (max-width: 720px) {
+        .grid { grid-template-columns: 1fr; }
+      }
     </style>
   </head>
   <body>
-    <main>
-      <div class="card">
-        <h1>${h1}</h1>
-        <p class="muted">${status}</p>
-        <div class="grid">
-          <div class="item"><div class="lbl">Operator code</div><div class="val">${params.operatorCode ?? '-'}</div></div>
-          <div class="item"><div class="lbl">Operator name</div><div class="val">${params.operatorName ?? '-'}</div></div>
-          <div class="item"><div class="lbl">Risk score</div><div class="val">${params.score}%</div></div>
-          <div class="item"><div class="lbl">Source</div><div class="val">ARCEP</div></div>
+    <div class="scene">
+      <div class="blob b1"></div>
+      <div class="blob b2"></div>
+      <div class="blob b3"></div>
+      <main>
+        <div class="card">
+          <div class="topline">ARCEP Lookup</div>
+          <h1>${h1}</h1>
+          <p class="muted">${status}</p>
+          <div class="grid">
+            <div class="item"><div class="lbl">Operator code</div><div class="val">${params.operatorCode ?? '-'}</div></div>
+            <div class="item"><div class="lbl">Operator name</div><div class="val">${params.operatorName ?? '-'}</div></div>
+            <div class="item"><div class="lbl">Risk score</div><div class="val">${params.score}%</div></div>
+            <div class="item"><div class="lbl">Source</div><div class="val">ARCEP</div></div>
+          </div>
+          <div class="actions">
+            <a class="btn btn-primary" href="/${params.locale}?number=${encodeURIComponent(params.number)}">${params.locale === 'fr' ? 'Analyser ce numero' : 'Analyze this number'}</a>
+            <a class="btn btn-secondary" href="/docs">API docs</a>
+          </div>
         </div>
-        <div class="actions">
-          <a class="btn" href="/${params.locale}?number=${encodeURIComponent(params.number)}">${params.locale === 'fr' ? 'Analyser ce numero' : 'Analyze this number'}</a>
-          <a class="btn" href="/docs" style="background:#0f172a;">API docs</a>
-        </div>
-      </div>
-    </main>
+      </main>
+    </div>
   </body>
 </html>`
 }
