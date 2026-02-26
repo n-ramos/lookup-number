@@ -1,0 +1,31 @@
+# VCS
+.git
+.gitignore
+
+# Node artifacts
+node_modules
+.pnpm-store
+
+# Build artifacts
+build
+coverage
+.nyc_output
+*.tsbuildinfo
+
+# Local env / secrets
+.env
+.env.*
+!.env.example
+
+# IDE / OS
+.idea
+.vscode
+.DS_Store
+
+# Logs
+*.log
+logs
+
+# Local runtime data
+pgdata
+.tmp

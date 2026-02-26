@@ -1,0 +1,256 @@
+openapi: 3.0.3
+info:
+  title: ARCEP Lookup API
+  version: 0.1.0
+  description: API ARCEP (AdonisJS v6 + Postgres) avec lookup et sync admin.
+servers:
+  - url: http://localhost:3333
+paths:
+  /health:
+    get:
+      tags: [System]
+      summary: Health check
+      operationId: healthCheck
+      responses:
+        "200":
+          description: API up
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthResponse"
+              example:
+                ok: true
+
+  /v1/lookup:
+    get:
+      tags: [Lookup]
+      summary: Lookup opérateur par numéro
+      operationId: lookupNumber
+      parameters:
+        - in: query
+          name: number
+          required: true
+          schema:
+            type: string
+          description: Numéro à rechercher (formats libres acceptés, ex. +33612345678)
+      responses:
+        "200":
+          description: Résultat du lookup
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: "#/components/schemas/LookupFoundResponse"
+                  - $ref: "#/components/schemas/LookupNotFoundResponse"
+              examples:
+                found:
+                  summary: Numéro trouvé
+                  value:
+                    found: true
+                    input: "3277"
+                    digits: "3277"
+                    operatorCode: "BJTP"
+                    operatorName: "BJT Partners"
+                    risk:
+                      score: 100
+                      flags: ["KAV_OPERATOR"]
+                    requestCount: 12
+                    rangeStart: "3277"
+                    rangeEnd: "3277"
+                    sourceVersion: "2026-02-10"
+                notFound:
+                  summary: Numéro non trouvé
+                  value:
+                    found: false
+                    input: "+33612345678"
+                    digits: "33612345678"
+                    requestCount: 3
+
+  /admin/sync/arcep:
+    post:
+      tags: [Admin]
+      summary: Lance une synchronisation ARCEP
+      operationId: adminSyncArcep
+      responses:
+        "200":
+          description: Sync exécutée
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminSyncResponse"
+              example:
+                ok: true
+                operatorsRows: 1567
+                rangesRows: 19987
+                version: "2026-02-10"
+                majnumTitle: "MAJNUM"
+                operatorsTitle: "Acteurs attributaires..."
+
+  /admin/lookup/stats:
+    get:
+      tags: [Admin]
+      summary: Retourne les statistiques de lookup
+      operationId: adminLookupStats
+      parameters:
+        - in: query
+          name: limit
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 1000
+            default: 100
+        - in: query
+          name: flagged
+          required: false
+          schema:
+            type: boolean
+            default: false
+      responses:
+        "200":
+          description: Liste de statistiques triée
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminLookupStatsResponse"
+
+components:
+  schemas:
+    HealthResponse:
+      type: object
+      required: [ok]
+      properties:
+        ok:
+          type: boolean
+
+    Risk:
+      type: object
+      required: [score, flags]
+      properties:
+        score:
+          type: integer
+          minimum: 0
+          description: Score de risque agrégé
+        flags:
+          type: array
+          items:
+            type: string
+          description: Drapeaux de risque déclenchés
+
+    LookupFoundResponse:
+      type: object
+      required:
+        - found
+        - input
+        - digits
+        - operatorCode
+        - operatorName
+        - risk
+        - rangeStart
+        - rangeEnd
+        - sourceVersion
+      properties:
+        found:
+          type: boolean
+          enum: [true]
+        input:
+          type: string
+        digits:
+          type: string
+        operatorCode:
+          type: string
+        operatorName:
+          type: string
+          nullable: true
+        risk:
+          $ref: "#/components/schemas/Risk"
+        rangeStart:
+          type: string
+        rangeEnd:
+          type: string
+        sourceVersion:
+          type: string
+        requestCount:
+          type: integer
+          minimum: 0
+
+    LookupNotFoundResponse:
+      type: object
+      required: [found, input, digits, requestCount]
+      properties:
+        found:
+          type: boolean
+          enum: [false]
+        input:
+          type: string
+        digits:
+          type: string
+        requestCount:
+          type: integer
+          minimum: 0
+
+    AdminSyncResponse:
+      type: object
+      required: [ok, operatorsRows, rangesRows, version]
+      properties:
+        ok:
+          type: boolean
+        operatorsRows:
+          type: integer
+        rangesRows:
+          type: integer
+        version:
+          type: string
+        majnumTitle:
+          type: string
+          nullable: true
+        operatorsTitle:
+          type: string
+          nullable: true
+
+    LookupStatRow:
+      type: object
+      required:
+        - numberDigits
+        - requestCount
+        - found
+        - riskScore
+        - riskFlags
+        - firstSeenAt
+        - lastSeenAt
+      properties:
+        numberDigits:
+          type: string
+        requestCount:
+          type: integer
+          minimum: 0
+        found:
+          type: boolean
+        operatorCode:
+          type: string
+          nullable: true
+        operatorName:
+          type: string
+          nullable: true
+        riskScore:
+          type: integer
+          minimum: 0
+        riskFlags:
+          type: array
+          items:
+            type: string
+        firstSeenAt:
+          type: string
+        lastSeenAt:
+          type: string
+
+    AdminLookupStatsResponse:
+      type: object
+      required: [count, rows]
+      properties:
+        count:
+          type: integer
+        rows:
+          type: array
+          items:
+            $ref: "#/components/schemas/LookupStatRow"

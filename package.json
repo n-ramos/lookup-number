@@ -1,0 +1,48 @@
+{
+  "name": "arcep-lookup-adonis",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@10.30.0",
+  "version": "0.1.0",
+  "description": "ARCEP numbering lookup API (AdonisJS v6 + Postgres) with automated CSV sync (staging + swap).",
+  "imports": {
+    "#controllers/*": "./app/Controllers/*.ts",
+    "#commands/*": "./commands/*.ts",
+    "#models/*": "./app/Models/*.ts",
+    "#services/*": "./app/Services/*.ts",
+    "#start/*": "./start/*.ts",
+    "#config/*": "./config/*.ts"
+  },
+  "scripts": {
+    "dev": "node ace serve --watch",
+    "build": "node ace build",
+    "start": "node bin/server.ts",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "migration:run": "node ace migration:run",
+    "migration:rollback": "node ace migration:rollback",
+    "sync:arcep": "node ace sync:arcep",
+    "scheduler": "node ./scripts/scheduler.js",
+    "sync:cli": "./scripts/sync_arcep.sh",
+    "discord:register": "node bot/discord/register.ts",
+    "discord:start": "node bot/discord/start.ts",
+    "test": "node --test tests/**/*.test.ts"
+  },
+  "dependencies": {
+    "@adonisjs/core": "^7.0.0",
+    "@adonisjs/lucid": "^22.0.0",
+    "@adonisjs/validator": "^13.0.2",
+    "csv-parse": "^6.1.0",
+    "discord.js": "^14.21.0",
+    "iconv-lite": "^0.7.2",
+    "luxon": "^3.7.2",
+    "node-cron": "^4.2.1",
+    "pg": "^8.19.0",
+    "reflect-metadata": "^0.2.2"
+  },
+  "devDependencies": {
+    "@adonisjs/assembler": "^8.0.0",
+    "@poppinss/ts-exec": "^1.4.4",
+    "@types/node": "^25.3.1",
+    "typescript": "^5.9.3"
+  }
+}
