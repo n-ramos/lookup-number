@@ -1043,7 +1043,7 @@ router.get('/sitemap-numbers.xml', async ({ request, response }) => {
   const origin = new URL(request.completeUrl()).origin
   const nowIso = new Date().toISOString()
 
-  const entries = new Set<string>([`${origin}/fr/numero/33612345678`, `${origin}/en/number/33612345678`])
+  const numberDigitsSet = new Set<string>()
 
   try {
     const { default: Database } = await import('@adonisjs/lucid/services/db')
@@ -1054,16 +1054,22 @@ router.get('/sitemap-numbers.xml', async ({ request, response }) => {
       .limit(500)
 
     for (const row of topRows) {
-      const digits = String(row.number_digits ?? '').trim()
+      const digits = NumberNormalizeService.toDigits(String(row.number_digits ?? '').trim())
       if (!digits) continue
-      entries.add(`${origin}/fr/numero/${encodeURIComponent(digits)}`)
-      entries.add(`${origin}/en/number/${encodeURIComponent(digits)}`)
+      numberDigitsSet.add(digits)
     }
   } catch {
     // Keep sitemap available even if DB is temporarily unavailable.
   }
 
-  const nodes = [...entries]
+  if (numberDigitsSet.size === 0) {
+    numberDigitsSet.add('33612345678')
+  }
+
+  // One canonical URL per number for SEO sitemap (FR route).
+  const entries = [...numberDigitsSet].map((digits) => `${origin}/fr/numero/${encodeURIComponent(digits)}`)
+
+  const nodes = entries
     .map((url) => {
       return [
         `  <url>`,
