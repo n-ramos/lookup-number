@@ -529,11 +529,11 @@ function renderLookupUi(locale: 'fr' | 'en', canonicalUrl: string, frUrl: string
 
 router.get('/health', async () => ({ ok: true }))
 
-router.get('/v1/lookup', '#controllers/http/lookup_controller.lookup')
+router.get('/v1/lookup', '#controllers/Http/lookup_controller.lookup')
 
 // ⚠️ À protéger avec auth plus tard
-router.post('/admin/sync/arcep', '#controllers/http/admin_sync_controller.sync')
-router.get('/admin/lookup/stats', '#controllers/http/admin_lookup_stats_controller.index')
+router.post('/admin/sync/arcep', '#controllers/Http/admin_sync_controller.sync')
+router.get('/admin/lookup/stats', '#controllers/Http/admin_lookup_stats_controller.index')
 
 router.get('/openapi.yaml', async ({ response }) => {
   response.header('content-type', 'application/yaml; charset=utf-8')
