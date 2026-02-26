@@ -1,5 +1,7 @@
 import router from '@adonisjs/core/services/router'
 import { readFileSync } from 'node:fs'
+import NumberNormalizeService from '#services/number_normalize_service'
+import RiskScoringService from '#services/risk_scoring_service'
 
 const openApiYaml = readFileSync(new URL('../openapi.yaml', import.meta.url), 'utf-8')
 
@@ -772,6 +774,155 @@ function renderLookupUi(locale: 'fr' | 'en', canonicalUrl: string, frUrl: string
     .replaceAll('__SEO_API_BASE__', apiBase)
 }
 
+async function lookupForSeoPage(input: string) {
+  const digits = NumberNormalizeService.toDigits(input)
+  const candidates = NumberNormalizeService.toLookupCandidates(input)
+  if (!digits || !candidates.length) {
+    return { found: false, digits: digits ?? '', operatorCode: null as string | null, operatorName: null as string | null, risk: { score: 0, flags: [] as string[] } }
+  }
+
+  const { default: Database } = await import('@adonisjs/lucid/services/db')
+
+  let row: any = null
+  let matchedDigits = digits
+  for (const candidate of candidates) {
+    const n = BigInt(candidate)
+    const current = await Database.from('number_ranges')
+      .where('start_num', '<=', n.toString())
+      .orderBy('start_num', 'desc')
+      .first()
+    if (current && BigInt(String(current.end_num)) >= n) {
+      row = current
+      matchedDigits = candidate
+      break
+    }
+  }
+
+  if (!row) {
+    return { found: false, digits: matchedDigits, operatorCode: null, operatorName: null, risk: { score: 0, flags: [] as string[] } }
+  }
+
+  const operator = await Database.from('operators').where('code', row.operator_code).first()
+  const risk = new RiskScoringService().scoreFromOperatorCode(row.operator_code)
+
+  return {
+    found: true,
+    digits: matchedDigits,
+    operatorCode: row.operator_code ?? null,
+    operatorName: operator?.name ?? null,
+    risk,
+  }
+}
+
+function renderNumberSeoPage(params: {
+  locale: 'fr' | 'en'
+  number: string
+  canonicalUrl: string
+  frUrl: string
+  enUrl: string
+  found: boolean
+  operatorCode: string | null
+  operatorName: string | null
+  score: number
+}) {
+  const safeNumber = params.number.replace(/</g, '&lt;').replace(/>/g, '&gt;')
+  const title = params.locale === 'fr' ? `Operateur du numero ${safeNumber} - ARCEP Lookup` : `Operator for number ${safeNumber} - ARCEP Lookup`
+  const description =
+    params.locale === 'fr'
+      ? `Resultat ARCEP pour ${safeNumber}: operateur ${params.operatorName ?? 'inconnu'} (${params.operatorCode ?? '-'}) et score risque ${params.score}%.`
+      : `ARCEP result for ${safeNumber}: operator ${params.operatorName ?? 'unknown'} (${params.operatorCode ?? '-'}) and risk score ${params.score}%.`
+  const h1 = params.locale === 'fr' ? `Numero ${safeNumber}` : `Number ${safeNumber}`
+  const status = params.found
+    ? params.locale === 'fr'
+      ? 'Numero trouve'
+      : 'Number found'
+    : params.locale === 'fr'
+      ? 'Numero non trouve'
+      : 'Number not found'
+
+  return `<!doctype html>
+<html lang="${params.locale}">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>${title}</title>
+    <meta name="description" content="${description}" />
+    <meta name="robots" content="index, follow, max-image-preview:large" />
+    <link rel="canonical" href="${params.canonicalUrl}" />
+    <link rel="alternate" hreflang="fr" href="${params.frUrl}" />
+    <link rel="alternate" hreflang="en" href="${params.enUrl}" />
+    <link rel="alternate" hreflang="x-default" href="${params.frUrl}" />
+    <meta property="og:type" content="article" />
+    <meta property="og:title" content="${title}" />
+    <meta property="og:description" content="${description}" />
+    <meta property="og:url" content="${params.canonicalUrl}" />
+    <style>
+      body { margin: 0; font-family: system-ui, sans-serif; background: #f8fafc; color: #0f172a; }
+      main { max-width: 860px; margin: 40px auto; padding: 0 16px; }
+      .card { background: #fff; border: 1px solid #e2e8f0; border-radius: 14px; padding: 18px; }
+      h1 { margin: 0 0 6px; font-size: 1.5rem; }
+      .muted { color: #64748b; }
+      .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 14px; }
+      .item { border: 1px solid #e2e8f0; border-radius: 10px; padding: 10px; }
+      .lbl { color: #64748b; font-size: .85rem; }
+      .val { font-weight: 700; margin-top: 3px; }
+      .actions { margin-top: 14px; display: flex; gap: 10px; }
+      a.btn { display: inline-block; text-decoration: none; background: #2563eb; color: #fff; padding: 10px 12px; border-radius: 10px; }
+      @media (max-width: 700px) { .grid { grid-template-columns: 1fr; } }
+    </style>
+  </head>
+  <body>
+    <main>
+      <div class="card">
+        <h1>${h1}</h1>
+        <p class="muted">${status}</p>
+        <div class="grid">
+          <div class="item"><div class="lbl">Operator code</div><div class="val">${params.operatorCode ?? '-'}</div></div>
+          <div class="item"><div class="lbl">Operator name</div><div class="val">${params.operatorName ?? '-'}</div></div>
+          <div class="item"><div class="lbl">Risk score</div><div class="val">${params.score}%</div></div>
+          <div class="item"><div class="lbl">Source</div><div class="val">ARCEP</div></div>
+        </div>
+        <div class="actions">
+          <a class="btn" href="/${params.locale}?number=${encodeURIComponent(params.number)}">${params.locale === 'fr' ? 'Analyser ce numero' : 'Analyze this number'}</a>
+          <a class="btn" href="/docs" style="background:#0f172a;">API docs</a>
+        </div>
+      </div>
+    </main>
+  </body>
+</html>`
+}
+
+function xmlEscape(value: string): string {
+  return value
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;')
+    .replaceAll("'", '&apos;')
+}
+
+function xmlSitemapUrlset(urlNodes: string[]): string {
+  return [
+    `<?xml version="1.0" encoding="UTF-8"?>`,
+    `<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">`,
+    ...urlNodes,
+    `</urlset>`,
+  ].join('\n')
+}
+
+function xmlSitemapIndex(sitemapLocs: string[]): string {
+  const nowIso = new Date().toISOString()
+  const nodes = sitemapLocs.map((loc) =>
+    [`  <sitemap>`, `    <loc>${xmlEscape(loc)}</loc>`, `    <lastmod>${nowIso}</lastmod>`, `  </sitemap>`].join('\n')
+  )
+  return [
+    `<?xml version="1.0" encoding="UTF-8"?>`,
+    `<sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">`,
+    ...nodes,
+    `</sitemapindex>`,
+  ].join('\n')
+}
+
 router.get('/health', async () => ({ ok: true }))
 
 router.get('/v1/lookup', '#controllers/Http/lookup_controller.lookup')
@@ -783,6 +934,83 @@ router.get('/admin/lookup/stats', '#controllers/Http/admin_lookup_stats_controll
 router.get('/openapi.yaml', async ({ response }) => {
   response.header('content-type', 'application/yaml; charset=utf-8')
   return openApiYaml
+})
+
+router.get('/robots.txt', async ({ request, response }) => {
+  const origin = new URL(request.completeUrl()).origin
+  response.header('content-type', 'text/plain; charset=utf-8')
+  return [`User-agent: *`, `Allow: /`, `Sitemap: ${origin}/sitemap-index.xml`].join('\n')
+})
+
+router.get('/sitemap-index.xml', async ({ request, response }) => {
+  const origin = new URL(request.completeUrl()).origin
+  const xml = xmlSitemapIndex([`${origin}/sitemap-core.xml`, `${origin}/sitemap-numbers.xml`])
+  response.header('content-type', 'application/xml; charset=utf-8')
+  return xml
+})
+
+router.get('/sitemap-core.xml', async ({ request, response }) => {
+  const origin = new URL(request.completeUrl()).origin
+  const nowIso = new Date().toISOString()
+  const entries = [`${origin}/fr`, `${origin}/en`, `${origin}/docs`]
+  const nodes = entries.map((url) =>
+    [
+      `  <url>`,
+      `    <loc>${xmlEscape(url)}</loc>`,
+      `    <lastmod>${nowIso}</lastmod>`,
+      `    <changefreq>daily</changefreq>`,
+      `    <priority>0.90</priority>`,
+      `  </url>`,
+    ].join('\n')
+  )
+  response.header('content-type', 'application/xml; charset=utf-8')
+  return xmlSitemapUrlset(nodes)
+})
+
+router.get('/sitemap-numbers.xml', async ({ request, response }) => {
+  const origin = new URL(request.completeUrl()).origin
+  const nowIso = new Date().toISOString()
+
+  const entries = new Set<string>([`${origin}/fr/numero/33612345678`, `${origin}/en/number/33612345678`])
+
+  try {
+    const { default: Database } = await import('@adonisjs/lucid/services/db')
+    const topRows = await Database.from('lookup_stats')
+      .select('number_digits')
+      .where('found', true)
+      .orderBy('request_count', 'desc')
+      .limit(500)
+
+    for (const row of topRows) {
+      const digits = String(row.number_digits ?? '').trim()
+      if (!digits) continue
+      entries.add(`${origin}/fr/numero/${encodeURIComponent(digits)}`)
+      entries.add(`${origin}/en/number/${encodeURIComponent(digits)}`)
+    }
+  } catch {
+    // Keep sitemap available even if DB is temporarily unavailable.
+  }
+
+  const nodes = [...entries]
+    .map((url) => {
+      return [
+        `  <url>`,
+        `    <loc>${xmlEscape(url)}</loc>`,
+        `    <lastmod>${nowIso}</lastmod>`,
+        `    <changefreq>daily</changefreq>`,
+        `    <priority>0.70</priority>`,
+        `  </url>`,
+      ].join('\n')
+    })
+  
+  const xml = xmlSitemapUrlset(nodes)
+
+  response.header('content-type', 'application/xml; charset=utf-8')
+  return xml
+})
+
+router.get('/sitemap.xml', async ({ response }) => {
+  return response.redirect('/sitemap-index.xml')
 })
 
 router.get('/docs', async ({ response }) => {
@@ -804,6 +1032,48 @@ router.get('/en', async ({ request, response }) => {
   const frUrl = canonicalUrl.replace(/\/en(\?.*)?$/, '/fr$1')
   const apiBase = new URL(canonicalUrl).origin
   return renderLookupUi('en', canonicalUrl, frUrl, canonicalUrl, apiBase)
+})
+
+router.get('/fr/numero/:number', async ({ request, response, params }) => {
+  response.header('content-type', 'text/html; charset=utf-8')
+  const number = String(params.number ?? '')
+  const result = await lookupForSeoPage(number)
+  const canonicalUrl = request.completeUrl()
+  const enUrl = canonicalUrl.replace('/fr/numero/', '/en/number/')
+  return renderNumberSeoPage({
+    locale: 'fr',
+    number,
+    canonicalUrl,
+    frUrl: canonicalUrl,
+    enUrl,
+    found: result.found,
+    operatorCode: result.operatorCode,
+    operatorName: result.operatorName,
+    score: result.risk.score,
+  })
+})
+
+router.get('/en/number/:number', async ({ request, response, params }) => {
+  response.header('content-type', 'text/html; charset=utf-8')
+  const number = String(params.number ?? '')
+  const result = await lookupForSeoPage(number)
+  const canonicalUrl = request.completeUrl()
+  const frUrl = canonicalUrl.replace('/en/number/', '/fr/numero/')
+  return renderNumberSeoPage({
+    locale: 'en',
+    number,
+    canonicalUrl,
+    frUrl,
+    enUrl: canonicalUrl,
+    found: result.found,
+    operatorCode: result.operatorCode,
+    operatorName: result.operatorName,
+    score: result.risk.score,
+  })
+})
+
+router.get('/numero/:number', async ({ params, response }) => {
+  return response.redirect(`/fr/numero/${encodeURIComponent(String(params.number ?? ''))}`)
 })
 
 router.get('/', async ({ response }) => {
