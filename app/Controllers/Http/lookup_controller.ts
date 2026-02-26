@@ -93,11 +93,12 @@ export default class LookupController {
     const operator = await Database.from('operators').where('code', row.operator_code).first()
     const risk = this.scoring.scoreFromOperatorCode(row.operator_code)
     const persistedDigits = matchedDigits || digits
+    const persistedOperatorCode = operator?.code ?? null
     const requestCount = await this.recordLookup({
       db: Database,
       numberDigits: persistedDigits,
       found: true,
-      operatorCode: row.operator_code ?? null,
+      operatorCode: persistedOperatorCode,
       riskScore: risk.score,
       riskFlags: risk.flags,
     })
