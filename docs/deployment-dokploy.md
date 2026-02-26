@@ -123,3 +123,7 @@ curl -sS "https://api.ton-domaine.tld/v1/lookup?number=%2B33%206%2012%2034%2056%
 - `lookup` vide: relancer `node ace sync:arcep`.
 - Bot silencieux: vérifier `DISCORD_BOT_TOKEN`, `DISCORD_APP_ID`, `DISCORD_API_BASE_URL`.
 - Slash command absente: relancer `pnpm run discord:register`.
+- Boucle reboot avec `Cannot find module /app/build/start/env.ts`:
+  - la commande du service API doit être `node bin/server.ts`
+  - retirer tout override `node bin/server.js` ou `cd build && ...`
+  - redeployer l'image après mise à jour

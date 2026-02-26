@@ -112,10 +112,7 @@ pnpm run scheduler
   - `node ace serve --watch`
   - ou `pnpm run dev`
 - Production:
-  - `node ace build`
-  - `cd build && pnpm i --prod`
-  - `node bin/server.js`
-  - démarrage simple depuis la racine: `pnpm run start`
+  - `NODE_ENV=production pnpm run start`
 
 ## Discord bot (optionnel)
 
@@ -164,9 +161,8 @@ Si ça ne match pas:
 
 ## Docker / Dokploy
 
-Le projet inclut un `Dockerfile` multi-stage prêt pour Dokploy:
-- build TypeScript Adonis (`pnpm run build`)
-- image runtime légère en production
+Le projet inclut un `Dockerfile` prêt pour Dokploy:
+- image runtime Node 24 + pnpm
 - démarrage via `node bin/server.ts`
 
 Variables d'environnement minimales à configurer sur Dokploy:
