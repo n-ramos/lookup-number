@@ -39,8 +39,8 @@ export default class LookupController {
           1,
           ?,
           CASE
-            WHEN ? IS NOT NULL AND EXISTS (SELECT 1 FROM operators o WHERE o.code = ?)
-            THEN ?
+            WHEN ?::text IS NOT NULL AND EXISTS (SELECT 1 FROM operators o WHERE o.code = ?::text)
+            THEN ?::text
             ELSE NULL
           END,
           ?,
@@ -60,7 +60,6 @@ export default class LookupController {
       [
         params.numberDigits,
         params.found,
-        params.operatorCode,
         params.operatorCode,
         params.operatorCode,
         params.riskScore,
