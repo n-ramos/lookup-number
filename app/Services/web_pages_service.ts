@@ -526,7 +526,8 @@ const lookupUiHtml = `<!doctype html>
       }
 
       function digitsOnly(raw) {
-        return String(raw || '').replace(/\D+/g, '')
+        const normalized = String(raw || '').normalize('NFKC')
+        return normalized.replace(/[^0-9]+/g, '')
       }
 
       function sanitizePhoneText(raw) {
@@ -675,12 +676,23 @@ const lookupUiHtml = `<!doctype html>
       })
 
       input.addEventListener('paste', (e) => {
-        const text = (e.clipboardData && e.clipboardData.getData('text')) || ''
-        if (!text) return
-        e.preventDefault()
-        const normalized = normalizeRawPhone(text)
-        input.value = formatAsYouType(normalized)
-        hideStatus()
+        const text =
+          (e.clipboardData && (e.clipboardData.getData('text/plain') || e.clipboardData.getData('text'))) || ''
+
+        if (text) {
+          e.preventDefault()
+          const normalized = normalizeRawPhone(text)
+          input.value = formatAsYouType(normalized)
+          hideStatus()
+          return
+        }
+
+        // iOS Safari may not expose clipboardData reliably in the paste event.
+        setTimeout(() => {
+          const normalized = normalizeRawPhone(input.value)
+          input.value = formatAsYouType(normalized)
+          hideStatus()
+        }, 0)
       })
 
       langSel.addEventListener('change', () => {
