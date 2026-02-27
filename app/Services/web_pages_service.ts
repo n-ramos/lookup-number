@@ -276,7 +276,7 @@ const lookupUiHtml = `<!doctype html>
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>__SEO_TITLE__</title>
     <meta name="description" content="__SEO_DESCRIPTION__" />
-    <meta name="keywords" content="ARCEP, lookup, operateur telecom, numero telephone, risque KAV, VoIP" />
+    <meta name="keywords" content="detecter appel spam, appel frauduleux, identification numero inconnu, signalement spam telephonique, arnaque telephone, phishing appel, ARCEP operateur, score risque numero" />
     <meta name="robots" content="index, follow, max-image-preview:large" />
     <meta name="theme-color" content="#020617" />
     <link rel="canonical" href="__SEO_CANONICAL__" />
@@ -370,8 +370,6 @@ const lookupUiHtml = `<!doctype html>
             >Analyser</button>
           </form>
 
-          <p class="mt-2 text-xs text-slate-400" data-i18n="hint">Le numero est reformate automatiquement avec indicatif et separateurs.</p>
-
           <div id="status" class="mt-4 hidden rounded-xl border border-cyan-400/25 bg-cyan-400/10 px-4 py-3 text-sm text-cyan-200"></div>
 
           <section id="result-card" class="mt-6 hidden rounded-2xl border border-white/15 bg-slate-900/70 p-5">
@@ -412,6 +410,11 @@ const lookupUiHtml = `<!doctype html>
               <p id="risk-flags" class="mt-1 text-base font-semibold text-white">-</p>
             </div>
           </section>
+
+          <section id="recent-numbers" class="mt-6 hidden">
+            <p class="mb-3 text-xs uppercase tracking-[0.18em] text-slate-400" data-i18n="recentTitle">Derniers numeros scannes</p>
+            <ul id="recent-list" class="grid gap-2 sm:grid-cols-2 lg:grid-cols-3"></ul>
+          </section>
         </section>
       </main>
     </div>
@@ -424,12 +427,12 @@ const lookupUiHtml = `<!doctype html>
 
       const I18N = {
         fr: {
-          liveLabel: 'Live lookup',
-          title: 'Lookup operateur et score risque',
-          subtitle: 'Saisis un numero pour interroger les plages ARCEP.',
+          liveLabel: 'Detection spam & fraude',
+          title: 'Ce numero est-il un spam ou une arnaque ?',
+          subtitle: 'Entrez un numero pour identifier l operateur et detecter les risques d appels frauduleux.',
           swaggerBtn: 'Voir Swagger',
           analyzeBtn: 'Analyser',
-          hint: 'Le numero est reformate automatiquement avec indicatif et separateurs.',
+          recentTitle: 'Derniers numeros scannes',
           resultLabel: 'Resultat',
           operatorCodeLabel: 'Code operateur',
           operatorNameLabel: 'Nom operateur',
@@ -449,12 +452,12 @@ const lookupUiHtml = `<!doctype html>
           invalidPhone: 'Numero invalide. Exemple accepte: +33 6 12 34 56 78',
         },
         en: {
-          liveLabel: 'Live lookup',
-          title: 'Operator lookup and risk score',
-          subtitle: 'Enter a number to query ARCEP ranges.',
+          liveLabel: 'Spam & fraud detection',
+          title: 'Is this number a spam or scam call?',
+          subtitle: 'Enter a number to identify the operator and detect fraud or phishing call risks.',
           swaggerBtn: 'Open Swagger',
           analyzeBtn: 'Analyze',
-          hint: 'The number is auto-formatted with country code and separators.',
+          recentTitle: 'Recent scanned numbers',
           resultLabel: 'Result',
           operatorCodeLabel: 'Operator code',
           operatorNameLabel: 'Operator name',
@@ -747,6 +750,7 @@ const lookupUiHtml = `<!doctype html>
             riskFlags.textContent = t('noFlags')
             resultCard.classList.remove('hidden')
             showStatus(t('notFoundStatus'))
+            saveRecent({ anon: anonymizeNumber(numberForApi), found: false, operator: '-', score: 0 })
             return
           }
 
@@ -766,6 +770,7 @@ const lookupUiHtml = `<!doctype html>
           riskFlags.textContent = flags.length ? flags.join(', ') : t('noFlags')
           resultCard.classList.remove('hidden')
           hideStatus()
+          saveRecent({ anon: anonymizeNumber(numberForApi), found: true, operator: data.operatorName || '-', score })
         } catch (err) {
           showStatus(t('fetchError'))
         } finally {
@@ -773,8 +778,57 @@ const lookupUiHtml = `<!doctype html>
         }
       })
 
+      const MAX_RECENT = 6
+
+      function anonymizeNumber(e164) {
+        if (!e164) return '?'
+        const str = String(e164)
+        let digits
+        if (str.startsWith('+33') && str.length >= 11) {
+          // French: +33XXXXXXXXX → 0XXXXXXXXX
+          digits = '0' + str.slice(3).replace(/\D/g, '')
+        } else if (str.startsWith('+')) {
+          digits = str.slice(1).replace(/\D/g, '')
+        } else {
+          digits = str.replace(/\D/g, '')
+        }
+        if (digits.length <= 4) return 'XXXX'
+        return digits.slice(0, -4) + 'XXXX'
+      }
+
+      function loadRecent() {
+        try { return JSON.parse(localStorage.getItem('arcep_recent') || '[]') } catch { return [] }
+      }
+
+      function saveRecent(entry) {
+        const recent = loadRecent().filter(r => r.anon !== entry.anon)
+        recent.unshift(entry)
+        localStorage.setItem('arcep_recent', JSON.stringify(recent.slice(0, MAX_RECENT)))
+        renderRecent()
+      }
+
+      function renderRecent() {
+        const recent = loadRecent()
+        const section = document.getElementById('recent-numbers')
+        const list = document.getElementById('recent-list')
+        if (!recent.length) { section.classList.add('hidden'); return }
+        section.classList.remove('hidden')
+        list.innerHTML = recent.map(r => {
+          const scoreColor = !r.found ? 'text-slate-400' : r.score >= 100 ? 'text-red-300' : r.score > 0 ? 'text-amber-300' : 'text-emerald-300'
+          const dot = !r.found ? 'bg-slate-500' : r.score >= 100 ? 'bg-red-400' : r.score > 0 ? 'bg-amber-400' : 'bg-emerald-400'
+          return \`<li class="flex items-center justify-between gap-3 rounded-xl border border-white/10 bg-white/5 px-4 py-3">
+            <div class="flex items-center gap-2">
+              <span class="inline-block h-2 w-2 shrink-0 rounded-full \${dot}"></span>
+              <span class="font-mono text-sm font-semibold text-slate-100">\${r.anon}</span>
+            </div>
+            <span class="text-xs \${scoreColor}">\${r.operator || '-'}</span>
+          </li>\`
+        }).join('')
+      }
+
       langSel.value = state.lang
       applyTranslations()
+      renderRecent()
       input.value = ''
     </script>
   </body>
@@ -783,12 +837,12 @@ const lookupUiHtml = `<!doctype html>
 function renderLookupUi(locale: 'fr' | 'en', canonicalUrl: string, frUrl: string, enUrl: string, apiBase: string) {
   const seoTitle =
     locale === 'fr'
-      ? 'Lookup Numero ARCEP - Operateur et Score Risque KAV'
-      : 'ARCEP Number Lookup - Operator and KAV Risk Score'
+      ? 'Detecter un Appel Spam ou Arnaque - Identification Numero de Telephone'
+      : 'Detect Spam & Fraud Calls - Phone Number Lookup'
   const seoDescription =
     locale === 'fr'
-      ? 'Recherche operateur telecom ARCEP et score de risque KAV pour un numero de telephone.'
-      : 'Find ARCEP telecom operator and KAV risk score for a phone number.'
+      ? 'Identifiez instantanement si un numero de telephone est un spam, une arnaque ou un appel frauduleux. Operateur ARCEP, score de risque et signalement en temps reel.'
+      : 'Instantly identify if a phone number is spam, a scam or a fraud call. ARCEP operator, risk score and real-time detection.'
   const ogLocale = locale === 'fr' ? 'fr_FR' : 'en_US'
 
   return lookupUiHtml
@@ -854,11 +908,13 @@ function renderNumberSeoPage(params: {
   score: number
 }) {
   const safeNumber = params.number.replace(/</g, '&lt;').replace(/>/g, '&gt;')
-  const title = params.locale === 'fr' ? `Operateur du numero ${safeNumber} - ARCEP Lookup` : `Operator for number ${safeNumber} - ARCEP Lookup`
+  const title = params.locale === 'fr'
+    ? `${safeNumber} - Spam ou arnaque ? Operateur et risque`
+    : `${safeNumber} - Spam or scam? Operator & risk score`
   const description =
     params.locale === 'fr'
-      ? `Resultat ARCEP pour ${safeNumber}: operateur ${params.operatorName ?? 'inconnu'} (${params.operatorCode ?? '-'}) et score risque ${params.score}%.`
-      : `ARCEP result for ${safeNumber}: operator ${params.operatorName ?? 'unknown'} (${params.operatorCode ?? '-'}) and risk score ${params.score}%.`
+      ? `Le numero ${safeNumber} est-il un appel spam ou frauduleux ? Operateur: ${params.operatorName ?? 'inconnu'} (${params.operatorCode ?? '-'}) — Score risque: ${params.score}%.`
+      : `Is ${safeNumber} a spam or fraud call? Operator: ${params.operatorName ?? 'unknown'} (${params.operatorCode ?? '-'}) — Risk score: ${params.score}%.`
   const h1 = params.locale === 'fr' ? `Numero ${safeNumber}` : `Number ${safeNumber}`
   const status = params.found
     ? params.locale === 'fr'
