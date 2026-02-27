@@ -775,7 +775,7 @@ const lookupUiHtml = `<!doctype html>
 
       langSel.value = state.lang
       applyTranslations()
-      input.value = '+33 6 12 34 56 78'
+      input.value = ''
     </script>
   </body>
 </html>`
