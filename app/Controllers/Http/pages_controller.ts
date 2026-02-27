@@ -1,4 +1,14 @@
 import NumberNormalizeService from '#services/number_normalize_service'
+
+function maskLast4(digits: string): string {
+  if (digits.length <= 4) return 'X'.repeat(digits.length)
+  return digits.slice(0, -4) + 'XXXX'
+}
+
+function stripXxxSuffix(s: string): string {
+  return s.replace(/X+$/i, '').trim()
+}
+
 import {
   openApiYaml,
   swaggerHtml,
@@ -79,7 +89,7 @@ export default class PagesController {
       numberDigitsSet.add('33612345678')
     }
 
-    const entries = [...numberDigitsSet].map((digits) => `${origin}/fr/numero/${encodeURIComponent(digits)}`)
+    const entries = [...numberDigitsSet].map((digits) => `${origin}/fr/numero/${encodeURIComponent(maskLast4(digits))}`)
     const nodes = entries.map((url) => {
       return [
         '  <url>',
@@ -123,7 +133,8 @@ export default class PagesController {
   async frNumber({ request, response, params }: any) {
     response.header('content-type', 'text/html; charset=utf-8')
     const number = String(params.number ?? '')
-    const result = await lookupForSeoPage(number)
+    const lookupNumber = stripXxxSuffix(number) || number
+    const result = await lookupForSeoPage(lookupNumber)
     const canonicalUrl = request.completeUrl()
     const enUrl = canonicalUrl.replace('/fr/numero/', '/en/number/')
     return renderNumberSeoPage({
@@ -142,7 +153,8 @@ export default class PagesController {
   async enNumber({ request, response, params }: any) {
     response.header('content-type', 'text/html; charset=utf-8')
     const number = String(params.number ?? '')
-    const result = await lookupForSeoPage(number)
+    const lookupNumber = stripXxxSuffix(number) || number
+    const result = await lookupForSeoPage(lookupNumber)
     const canonicalUrl = request.completeUrl()
     const frUrl = canonicalUrl.replace('/en/number/', '/fr/numero/')
     return renderNumberSeoPage({

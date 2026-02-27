@@ -427,29 +427,29 @@ const lookupUiHtml = `<!doctype html>
 
       const I18N = {
         fr: {
-          liveLabel: 'Detection spam & fraude',
-          title: 'Ce numero est-il un spam ou une arnaque ?',
-          subtitle: 'Entrez un numero pour identifier l operateur et detecter les risques d appels frauduleux.',
-          swaggerBtn: 'Voir Swagger',
-          analyzeBtn: 'Analyser',
-          recentTitle: 'Derniers numeros scannes',
-          resultLabel: 'Resultat',
-          operatorCodeLabel: 'Code operateur',
-          operatorNameLabel: 'Nom operateur',
-          rangeLabel: 'Plage',
-          sourceVersionLabel: 'Version source',
-          requestCountLabel: 'Nombre de requetes sur ce numero',
-          flagsLabel: 'Flags risque',
-          loading: 'Analyse en cours...',
-          notFoundTitle: 'Numero non trouve',
-          notFoundStatus: 'Aucune plage active trouvee pour ce numero.',
-          foundTitle: 'Numero trouve',
-          noFlags: 'Aucun flag',
-          riskNa: 'N/A',
-          riskLabel: 'Risque',
-          fetchError: 'Erreur pendant le lookup. Verifie que l API tourne.',
-          normalizedLabel: 'Numero normalise',
-          invalidPhone: 'Numero invalide. Exemple accepte: +33 6 12 34 56 78',
+          liveLabel: "Détection spam & fraude",
+          title: "Ce numéro est-il un spam ou une arnaque ?",
+          subtitle: "Entrez un numéro pour identifier l'opérateur et détecter les risques d'appels frauduleux.",
+          swaggerBtn: "Voir Swagger",
+          analyzeBtn: "Analyser",
+          recentTitle: "Derniers numéros scannés",
+          resultLabel: "Résultat",
+          operatorCodeLabel: "Code opérateur",
+          operatorNameLabel: "Nom opérateur",
+          rangeLabel: "Plage",
+          sourceVersionLabel: "Version source",
+          requestCountLabel: "Nombre de requêtes sur ce numéro",
+          flagsLabel: "Flags risque",
+          loading: "Analyse en cours...",
+          notFoundTitle: "Numéro non trouvé",
+          notFoundStatus: "Aucune plage active trouvée pour ce numéro.",
+          foundTitle: "Numéro trouvé",
+          noFlags: "Aucun flag",
+          riskNa: "N/A",
+          riskLabel: "Risque",
+          fetchError: "Erreur pendant le lookup. Vérifiez que l'API tourne.",
+          normalizedLabel: "Numéro normalisé",
+          invalidPhone: "Numéro invalide. Exemple accepté : +33 6 12 34 56 78",
         },
         en: {
           liveLabel: 'Spam & fraud detection',
@@ -918,10 +918,10 @@ function renderNumberSeoPage(params: {
   const h1 = params.locale === 'fr' ? `Numero ${safeNumber}` : `Number ${safeNumber}`
   const status = params.found
     ? params.locale === 'fr'
-      ? 'Numero trouve'
+      ? 'Numéro trouvé'
       : 'Number found'
     : params.locale === 'fr'
-      ? 'Numero non trouve'
+      ? 'Numéro non trouvé'
       : 'Number not found'
 
   return `<!doctype html>
@@ -1038,7 +1038,7 @@ function renderNumberSeoPage(params: {
             <div class="item"><div class="lbl">Source</div><div class="val">ARCEP</div></div>
           </div>
           <div class="actions">
-            <a class="btn btn-primary" href="/${params.locale}?number=${encodeURIComponent(params.number)}">${params.locale === 'fr' ? 'Analyser ce numero' : 'Analyze this number'}</a>
+            <a class="btn btn-primary" href="/${params.locale}?number=${encodeURIComponent(params.number.replace(/X+$/gi, ''))}">${params.locale === 'fr' ? 'Analyser ce numéro' : 'Analyze this number'}</a>
             <a class="btn btn-secondary" href="/docs">API docs</a>
           </div>
         </div>
