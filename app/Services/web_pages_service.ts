@@ -414,6 +414,19 @@ const lookupUiHtml = `<!doctype html>
           <section id="recent-numbers" class="mt-6 hidden">
             <p class="mb-3 text-xs uppercase tracking-[0.18em] text-slate-400" data-i18n="recentTitle">Derniers numeros scannes</p>
             <ul id="recent-list" class="grid gap-2 sm:grid-cols-2 lg:grid-cols-3"></ul>
+            <div id="recent-pagination" class="mt-4 flex items-center justify-between gap-3 hidden">
+              <button
+                id="recent-prev"
+                type="button"
+                class="rounded-xl border border-white/15 bg-white/5 px-4 py-2 text-sm text-white transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-40"
+              ></button>
+              <p id="recent-page-label" class="text-sm text-slate-300"></p>
+              <button
+                id="recent-next"
+                type="button"
+                class="rounded-xl border border-white/15 bg-white/5 px-4 py-2 text-sm text-white transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-40"
+              ></button>
+            </div>
           </section>
         </section>
       </main>
@@ -433,6 +446,11 @@ const lookupUiHtml = `<!doctype html>
           swaggerBtn: "Voir Swagger",
           analyzeBtn: "Analyser",
           recentTitle: "Derniers numéros scannés",
+          recentLoading: "Chargement des derniers numéros...",
+          recentEmpty: "Aucun numéro scanné pour le moment.",
+          recentPageLabel: "Page {page} sur {totalPages}",
+          recentPrev: "Précédent",
+          recentNext: "Suivant",
           resultLabel: "Résultat",
           operatorCodeLabel: "Code opérateur",
           operatorNameLabel: "Nom opérateur",
@@ -458,6 +476,11 @@ const lookupUiHtml = `<!doctype html>
           swaggerBtn: 'Open Swagger',
           analyzeBtn: 'Analyze',
           recentTitle: 'Recent scanned numbers',
+          recentLoading: 'Loading recent numbers...',
+          recentEmpty: 'No scanned numbers yet.',
+          recentPageLabel: 'Page {page} of {totalPages}',
+          recentPrev: 'Previous',
+          recentNext: 'Next',
           resultLabel: 'Result',
           operatorCodeLabel: 'Operator code',
           operatorNameLabel: 'Operator name',
@@ -506,6 +529,18 @@ const lookupUiHtml = `<!doctype html>
       const sourceVersion = document.getElementById('source-version')
       const requestCountEl = document.getElementById('request-count')
       const riskFlags = document.getElementById('risk-flags')
+      const recentSection = document.getElementById('recent-numbers')
+      const recentList = document.getElementById('recent-list')
+      const recentPagination = document.getElementById('recent-pagination')
+      const recentPrevBtn = document.getElementById('recent-prev')
+      const recentNextBtn = document.getElementById('recent-next')
+      const recentPageLabel = document.getElementById('recent-page-label')
+      const recentState = {
+        page: 1,
+        perPage: 10,
+        totalPages: 1,
+        entries: [],
+      }
 
       function t(key) {
         return I18N[state.lang][key] || key
@@ -517,6 +552,10 @@ const lookupUiHtml = `<!doctype html>
           if (!key) return
           el.textContent = t(key)
         })
+
+        recentPrevBtn.textContent = t('recentPrev')
+        recentNextBtn.textContent = t('recentNext')
+        updateRecentPaginationLabel()
       }
 
       function showStatus(message) {
@@ -526,6 +565,10 @@ const lookupUiHtml = `<!doctype html>
 
       function hideStatus() {
         statusBox.classList.add('hidden')
+      }
+
+      function recentPageText(page, totalPages) {
+        return t('recentPageLabel').replace('{page}', String(page)).replace('{totalPages}', String(totalPages))
       }
 
       function digitsOnly(raw) {
@@ -750,7 +793,8 @@ const lookupUiHtml = `<!doctype html>
             riskFlags.textContent = t('noFlags')
             resultCard.classList.remove('hidden')
             showStatus(t('notFoundStatus'))
-            saveRecent({ anon: anonymizeNumber(numberForApi), found: false, operator: '-', score: 0 })
+            recentState.page = 1
+            await loadRecentFromServer()
             return
           }
 
@@ -770,7 +814,8 @@ const lookupUiHtml = `<!doctype html>
           riskFlags.textContent = flags.length ? flags.join(', ') : t('noFlags')
           resultCard.classList.remove('hidden')
           hideStatus()
-          saveRecent({ anon: anonymizeNumber(numberForApi), found: true, operator: data.operatorName || '-', score })
+          recentState.page = 1
+          await loadRecentFromServer()
         } catch (err) {
           showStatus(t('fetchError'))
         } finally {
@@ -778,57 +823,72 @@ const lookupUiHtml = `<!doctype html>
         }
       })
 
-      const MAX_RECENT = 6
-
-      function anonymizeNumber(e164) {
-        if (!e164) return '?'
-        const str = String(e164)
-        let digits
-        if (str.startsWith('+33') && str.length >= 11) {
-          // French: +33XXXXXXXXX → 0XXXXXXXXX
-          digits = '0' + str.slice(3).replace(/\D/g, '')
-        } else if (str.startsWith('+')) {
-          digits = str.slice(1).replace(/\D/g, '')
-        } else {
-          digits = str.replace(/\D/g, '')
-        }
-        if (digits.length <= 4) return 'XXXX'
-        return digits.slice(0, -4) + 'XXXX'
-      }
-
-      function loadRecent() {
-        try { return JSON.parse(localStorage.getItem('arcep_recent') || '[]') } catch { return [] }
-      }
-
-      function saveRecent(entry) {
-        const recent = loadRecent().filter(r => r.anon !== entry.anon)
-        recent.unshift(entry)
-        localStorage.setItem('arcep_recent', JSON.stringify(recent.slice(0, MAX_RECENT)))
-        renderRecent()
+      function updateRecentPaginationLabel() {
+        recentPageLabel.textContent = recentPageText(recentState.page, recentState.totalPages)
+        recentPrevBtn.disabled = recentState.page <= 1
+        recentNextBtn.disabled = recentState.page >= recentState.totalPages
+        recentPagination.classList.toggle('hidden', recentState.entries.length === 0 || recentState.totalPages <= 1)
       }
 
       function renderRecent() {
-        const recent = loadRecent()
-        const section = document.getElementById('recent-numbers')
-        const list = document.getElementById('recent-list')
-        if (!recent.length) { section.classList.add('hidden'); return }
-        section.classList.remove('hidden')
-        list.innerHTML = recent.map(r => {
-          const scoreColor = !r.found ? 'text-slate-400' : r.score >= 100 ? 'text-red-300' : r.score > 0 ? 'text-amber-300' : 'text-emerald-300'
-          const dot = !r.found ? 'bg-slate-500' : r.score >= 100 ? 'bg-red-400' : r.score > 0 ? 'bg-amber-400' : 'bg-emerald-400'
+        if (!recentState.entries.length) {
+          recentSection.classList.remove('hidden')
+          recentList.innerHTML = '<li class="rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-slate-300">' + t('recentEmpty') + '</li>'
+          recentPagination.classList.add('hidden')
+          return
+        }
+
+        recentSection.classList.remove('hidden')
+        recentList.innerHTML = recentState.entries.map(r => {
+          const scoreColor = !r.found ? 'text-slate-400' : r.riskScore >= 100 ? 'text-red-300' : r.riskScore > 0 ? 'text-amber-300' : 'text-emerald-300'
+          const dot = !r.found ? 'bg-slate-500' : r.riskScore >= 100 ? 'bg-red-400' : r.riskScore > 0 ? 'bg-amber-400' : 'bg-emerald-400'
           return \`<li class="flex items-center justify-between gap-3 rounded-xl border border-white/10 bg-white/5 px-4 py-3">
             <div class="flex items-center gap-2">
               <span class="inline-block h-2 w-2 shrink-0 rounded-full \${dot}"></span>
-              <span class="font-mono text-sm font-semibold text-slate-100">\${r.anon}</span>
+              <span class="font-mono text-sm font-semibold text-slate-100">\${r.numberMasked}</span>
             </div>
-            <span class="text-xs \${scoreColor}">\${r.operator || '-'}</span>
+            <span class="text-xs \${scoreColor}">\${r.operatorName || '-'}</span>
           </li>\`
         }).join('')
+        updateRecentPaginationLabel()
       }
+
+      async function loadRecentFromServer() {
+        recentSection.classList.remove('hidden')
+        recentList.innerHTML = '<li class="rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-slate-300">' + t('recentLoading') + '</li>'
+        recentPagination.classList.add('hidden')
+
+        try {
+          const res = await fetch('/v1/recent-lookups?page=' + encodeURIComponent(String(recentState.page)) + '&perPage=' + encodeURIComponent(String(recentState.perPage)))
+          if (!res.ok) throw new Error('HTTP ' + res.status)
+          const data = await res.json()
+          recentState.page = Number(data.page || 1)
+          recentState.perPage = Number(data.perPage || 10)
+          recentState.totalPages = Number(data.totalPages || 1)
+          recentState.entries = Array.isArray(data.entries) ? data.entries : []
+          renderRecent()
+        } catch (err) {
+          recentState.entries = []
+          recentState.totalPages = 1
+          renderRecent()
+        }
+      }
+
+      recentPrevBtn.addEventListener('click', async () => {
+        if (recentState.page <= 1) return
+        recentState.page -= 1
+        await loadRecentFromServer()
+      })
+
+      recentNextBtn.addEventListener('click', async () => {
+        if (recentState.page >= recentState.totalPages) return
+        recentState.page += 1
+        await loadRecentFromServer()
+      })
 
       langSel.value = state.lang
       applyTranslations()
-      renderRecent()
+      loadRecentFromServer()
       input.value = ''
     </script>
   </body>

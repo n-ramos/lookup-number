@@ -3,6 +3,7 @@ import router from '@adonisjs/core/services/router'
 router.get('/health', '#controllers/Http/pages_controller.health')
 
 router.get('/v1/lookup', '#controllers/Http/lookup_controller.lookup')
+router.get('/v1/recent-lookups', '#controllers/Http/recent_lookups_controller.index')
 
 // ⚠️ À protéger avec auth plus tard
 router.post('/admin/sync/arcep', '#controllers/Http/admin_sync_controller.sync')
